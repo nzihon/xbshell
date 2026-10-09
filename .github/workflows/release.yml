@@ -25,7 +25,9 @@ jobs:
         run: npm install
 
       - name: Build Windows installer
-        run: npm run dist
+        run: npm run dist -- --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
