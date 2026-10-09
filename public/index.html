@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XBTerminal — 肖巴的远程终端</title>
+  <link rel="icon" href="icon.png" />
+  <link rel="stylesheet" href="vendor/xterm.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部工具栏 -->
+    <header id="topbar">
+      <div class="brand">
+        <img class="logo" src="icon.png" alt="XBTerminal" />
+        <span class="title">XBTerminal</span>
+      </div>
+
+      <div class="toolbar">
+        <button id="btn-connect" class="btn primary" title="连接当前会话">连接</button>
+        <button id="btn-disconnect" class="btn" title="断开当前会话">断开</button>
+        <button id="btn-new-session" class="btn" title="新建会话">新建会话</button>
+        <button id="btn-edit-session" class="btn" title="编辑当前会话属性">属性</button>
+        <button id="btn-sftp" class="btn" title="打开 SFTP 文件传输">SFTP</button>
+        <button id="btn-tunnel" class="btn" title="端口转发">隧道</button>
+        <span class="sep"></span>
+        <button id="btn-broadcast" class="btn" title="多会话广播输入(先多选标签)">📡 广播</button>
+        <button id="btn-layout" class="btn" title="终端排列方式">▦ 布局</button>
+        <button id="btn-logs" class="btn" title="查看会话日志">日志</button>
+        <button id="btn-monitor" class="btn" title="本机 CPU/内存监控">📊 监控</button>
+        <button id="btn-settings" class="btn" title="设置">设置</button>
+      </div>
+
+      <div id="quick-bar" class="quick-bar"></div>
+    </header>
+
+    <div id="main">
+      <!-- 左侧会话树 -->
+      <aside id="sidebar">
+        <div class="sidebar-head">
+          <span>会话管理器</span>
+          <div class="head-actions">
+            <button id="btn-add-folder" class="icon-btn" title="新建分组">📁+</button>
+          </div>
+        </div>
+        <div class="session-search"><input id="session-search" placeholder="🔍 搜索会话…" /></div>
+        <div id="session-tree" class="session-tree"></div>
+        <div class="sidebar-foot">
+          <div class="foot-status">
+            <span class="dot" id="status-dot"></span>
+            <span id="status-text">未连接</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 右侧主区 -->
+      <section id="workspace">
+        <div id="tabbar" class="tabbar"></div>
+        <div id="content" class="content">
+          <div id="welcome" class="welcome">
+            <div class="welcome-logo"><img src="icon.png" alt="XBTerminal 图标" /></div>
+            <h1>XBTerminal</h1>
+            <p>一款远程终端工具,支持 SSH / Telnet / Rlogin / SFTP / 端口转发。</p>
+            <div class="welcome-actions">
+              <button class="btn primary" onclick="App.newSession()">新建会话</button>
+              <button class="btn" onclick="App.quickConnect()">快速连接</button>
+            </div>
+            <div class="welcome-hint">
+              <p>· 左侧管理你的会话(可分组)</p>
+              <p>· 双击会话即可建立连接</p>
+              <p>· 支持密码 / 私钥认证、SFTP 文件传输、本地·远程·动态端口转发、会话日志、快捷命令</p>
+              <p>· Ctrl+点击多选标签后开启「广播」,可同时向多台机器输入命令</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右侧系统监控面板 -->
+      <aside id="monitor" class="monitor hidden">
+        <div class="monitor-head">
+          <span>🖥 远程监控</span>
+          <button class="icon-btn" id="btn-monitor-close" title="关闭">✕</button>
+        </div>
+        <div class="monitor-body">
+          <p class="mon-hint">监控当前激活 SSH 会话的远程主机 (Linux)</p>
+          <div class="mon-group">远程主机</div>
+          <div class="mon-row"><span>会话</span><b id="m-session">-</b></div>
+          <div class="mon-row"><span>主机名</span><b id="m-hostname">-</b></div>
+          <div class="mon-row"><span>系统</span><b id="m-platform">-</b></div>
+          <div class="mon-row"><span>运行时间</span><b id="m-uptime">-</b></div>
+
+          <div class="mon-group">CPU <span class="mon-sub" id="m-cpu-count"></span></div>
+          <div class="mon-row"><span>使用率</span><b id="m-cpu">-</b></div>
+          <div class="mon-bar"><div class="mon-bar-fill" id="m-cpu-bar"></div></div>
+
+          <div class="mon-group">内存</div>
+          <div class="mon-row"><span>使用率</span><b id="m-mem">-</b></div>
+          <div class="mon-row"><span>已用 / 总量</span><b id="m-mem-size">-</b></div>
+          <div class="mon-bar"><div class="mon-bar-fill" id="m-mem-bar"></div></div>
+
+          <div class="mon-group">负载 (1/5/15 分钟)</div>
+          <div class="mon-row"><span>平均负载</span><b id="m-load">-</b></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- 会话编辑弹窗 -->
+  <div id="modal-session" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head"><span id="session-modal-title">新建会话</span><button class="icon-btn modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="tabs">
+          <button class="tab active" data-tab="connection">连接</button>
+          <button class="tab" data-tab="auth">认证</button>
+          <button class="tab" data-tab="terminal">终端</button>
+          <button class="tab" data-tab="quick">快捷命令</button>
+        </div>
+
+        <div class="tab-page active" id="tab-connection">
+          <div class="field"><label>会话名称</label><input id="f-name" placeholder="例如:生产服务器" /></div>
+          <div class="field"><label>分组</label><input id="f-group" placeholder="例如:数据库 / 默认组" /></div>
+          <div class="field"><label>主机 (Host)</label><input id="f-host" placeholder="192.168.1.10 或 example.com" /></div>
+          <div class="field-row">
+            <div class="field"><label>端口</label><input id="f-port" type="number" value="22" /></div>
+            <div class="field"><label>协议</label>
+              <select id="f-protocol">
+                <option value="ssh">SSH</option>
+                <option value="telnet">Telnet</option>
+                <option value="rlogin">Rlogin</option>
+              </select>
+            </div>
+          </div>
+          <div class="field"><label>用户名</label><input id="f-username" placeholder="root" /></div>
+          <div class="field checkbox"><label><input type="checkbox" id="f-keepalive" checked /> 发送心跳保活 (Keepalive)</label></div>
+        </div>
+
+        <div class="tab-page" id="tab-auth">
+          <div class="field"><label>认证方式</label>
+            <select id="f-authType">
+              <option value="password">密码</option>
+              <option value="key">公钥 (Private Key)</option>
+              <option value="keyboard-interactive">键盘交互</option>
+            </select>
+          </div>
+          <div class="field" id="auth-password-field"><label>密码</label>
+            <div class="pw-row">
+              <input id="f-password" type="password" placeholder="留空表示每次连接时输入" />
+              <button id="btn-clear-password" class="btn small" style="display:none" title="清除已保存的密码">清除</button>
+            </div>
+          </div>
+          <div class="field" id="auth-key-field" style="display:none">
+            <label>私钥</label>
+            <select id="f-keyName"></select>
+            <button id="btn-manage-keys" class="btn small" style="margin-top:6px">管理私钥…</button>
+          </div>
+          <div class="field" id="auth-passphrase-field" style="display:none"><label>私钥口令 (Passphrase)</label><input id="f-passphrase" type="password" /></div>
+        </div>
+
+        <div class="tab-page" id="tab-terminal">
+          <div class="field"><label>终端类型</label>
+            <select id="f-term">
+              <option value="xterm-256color">xterm-256color</option>
+              <option value="xterm">xterm</option>
+              <option value="vt100">vt100</option>
+              <option value="linux">linux</option>
+            </select>
+          </div>
+          <div class="field checkbox"><label><input type="checkbox" id="f-logSession" /> 记录会话日志到本地文件</label></div>
+        </div>
+
+        <div class="tab-page" id="tab-quick">
+          <p class="hint">每行一条快捷命令,发送时会按顺序自动执行。</p>
+          <textarea id="f-quickCommands" rows="6" placeholder="ls -la&#10;df -h"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="App.closeModal('modal-session')">取消</button>
+        <button class="btn primary" onclick="App.saveSession()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 快速连接弹窗 -->
+  <div id="modal-quick" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head"><span>快速连接</span><button class="icon-btn modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field"><label>协议</label>
+            <select id="q-protocol">
+              <option value="ssh">SSH</option>
+              <option value="telnet">Telnet</option>
+              <option value="rlogin">Rlogin</option>
+            </select>
+          </div>
+          <div class="field"><label>端口</label><input id="q-port" type="number" value="22" /></div>
+        </div>
+        <div class="field"><label>主机</label><input id="q-host" placeholder="192.168.1.10 或 example.com" /></div>
+        <div class="field"><label>用户名</label><input id="q-username" value="root" /></div>
+        <div class="field"><label>密码</label><input id="q-password" type="password" /></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="App.closeModal('modal-quick')">取消</button>
+        <button class="btn primary" onclick="App.doQuickConnect()">连接</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 隧道弹窗 -->
+  <div id="modal-tunnel" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head"><span>端口转发</span><button class="icon-btn modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="field"><label>会话</label><select id="t-session"></select></div>
+        <div class="field"><label>转发类型</label>
+          <select id="t-mode">
+            <option value="local">本地转发 (Local)</option>
+            <option value="remote">远程转发 (Remote)</option>
+            <option value="dynamic">动态转发 SOCKS5 (Dynamic)</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>监听地址</label><input id="t-listenHost" value="127.0.0.1" /></div>
+          <div class="field"><label>监听端口</label><input id="t-listenPort" type="number" /></div>
+        </div>
+        <div class="field-row" id="t-target-row">
+          <div class="field"><label>目标地址</label><input id="t-targetHost" value="127.0.0.1" /></div>
+          <div class="field"><label>目标端口</label><input id="t-targetPort" type="number" /></div>
+        </div>
+        <div id="tunnel-list"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="App.closeModal('modal-tunnel')">关闭</button>
+        <button class="btn primary" onclick="App.addTunnel()">启动转发</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 密钥管理弹窗 -->
+  <div id="modal-keys" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head"><span>私钥管理</span><button class="icon-btn modal-close">✕</button></div>
+      <div class="modal-body">
+        <div id="keys-list"></div>
+        <div class="field"><label>密钥名称</label><input id="k-name" placeholder="id_rsa_prod" /></div>
+        <div class="field"><label>粘贴私钥内容</label><textarea id="k-content" rows="5" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="App.closeModal('modal-keys')">关闭</button>
+        <button class="btn primary" onclick="App.importKey()">导入密钥</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div id="modal-settings" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head"><span>设置</span><button class="icon-btn modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="field"><label>主题</label>
+          <select id="s-theme">
+            <option value="dark-blue">深蓝(默认)</option>
+            <option value="light">白色</option>
+            <option value="dark">黑色</option>
+            <option value="system">跟随系统</option>
+          </select>
+        </div>
+        <div class="field"><label>字号</label><input id="s-fontSize" type="number" min="10" max="24" /></div>
+        <div class="field"><label>字体</label><input id="s-fontFamily" placeholder="Consolas, monospace" /></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="App.closeModal('modal-settings')">取消</button>
+        <button class="btn primary" onclick="App.saveSettings()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 日志弹窗 -->
+  <div id="modal-logs" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head"><span>会话日志</span><button class="icon-btn modal-close">✕</button></div>
+      <div class="modal-body">
+        <div id="logs-list"></div>
+        <pre id="logs-content" class="log-view"></pre>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="App.refreshLogs()">刷新</button>
+        <button class="btn" onclick="App.closeModal('modal-logs')">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/xterm.js"></script>
+  <script src="vendor/addon-fit.js"></script>
+  <script src="vendor/addon-web-links.js"></script>
+  <script src="vendor/addon-search.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/terminal.js"></script>
+  <script src="js/sftp.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- 右键菜单 -->
+  <div id="ctx-menu" class="ctx-menu hidden"></div>
+
+  <!-- 全局上传进度浮层(拖拽/多选上传共用,非弹窗) -->
+  <div id="upload-panel" class="upload-panel hidden">
+    <div class="upload-head">📤 文件上传</div>
+    <div class="upload-list"></div>
+  </div>
+
+  <!-- 自定义确认框 -->
+  <div id="modal-confirm" class="modal hidden">
+    <div class="modal-box" style="width:380px">
+      <div class="modal-head"><span id="confirm-title">确认</span><button class="icon-btn" onclick="App._confirmResolve(false)">✕</button></div>
+      <div class="modal-body"><p class="hint" id="confirm-label" style="font-size:14px"></p></div>
+      <div class="modal-foot">
+        <button class="btn" onclick="App._confirmResolve(false)">取消</button>
+        <button class="btn primary" onclick="App._confirmResolve(true)">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自定义输入框 -->
+  <div id="modal-prompt" class="modal hidden">
+    <div class="modal-box" style="width:380px">
+      <div class="modal-head"><span id="prompt-title">输入</span><button class="icon-btn" onclick="App._promptResolve(null)">✕</button></div>
+      <div class="modal-body">
+        <p class="hint" id="prompt-label" style="font-size:14px"></p>
+        <input id="prompt-input" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px" />
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="App._promptResolve(null)">取消</button>
+        <button class="btn primary" onclick="App._promptSubmit()">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 一键发送命令弹窗 -->
+  <div id="modal-send" class="modal hidden">
+    <div class="modal-box" style="width:560px">
+      <div class="modal-head"><span>一键发送命令</span><button class="icon-btn" onclick="App.closeModal('modal-send')">✕</button></div>
+      <div class="modal-body">
+        <p class="hint" style="font-size:12px">粘贴或输入命令后点「发送」,将一次性发送到当前终端并逐条执行:每条命令一行;带 <code>\</code> 续行符的多行命令会自动按续行拼接执行。</p>
+        <textarea id="send-input" rows="10" placeholder="ls -la&#10;df -h&#10;free -m" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:6px;font-size:13px;font-family:monospace;resize:vertical"></textarea>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="App.closeModal('modal-send')">取消</button>
+        <button class="btn primary" onclick="App.doSendCommand()">发送</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
