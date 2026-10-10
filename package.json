@@ -1,6 +1,6 @@
 {
   "name": "xbterminal",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A remote terminal (SSH/Telnet/Rlogin/SFTP/port-forwarding) built with Node.js + xterm.js",
   "main": "electron/main.js",
   "type": "commonjs",
