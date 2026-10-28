@@ -123,7 +123,7 @@
           <div class="field"><label>分组</label><input id="f-group" placeholder="例如:数据库 / 默认组" /></div>
           <div class="field"><label>主机 (Host)</label><input id="f-host" placeholder="192.168.1.10 或 example.com" /></div>
           <div class="field-row">
-            <div class="field"><label>端口</label><input id="f-port" type="number" value="22" /></div>
+            <div class="field"><label>端口</label><input id="f-port" type="number" value="22" min="1" max="65535" /></div>
             <div class="field"><label>协议</label>
               <select id="f-protocol">
                 <option value="ssh">SSH</option>
@@ -147,6 +147,7 @@
           <div class="field" id="auth-password-field"><label>密码</label>
             <div class="pw-row">
               <input id="f-password" type="password" placeholder="留空表示每次连接时输入" />
+              <button class="icon-btn pw-eye" data-target="f-password" type="button" title="显示密码"></button>
               <button id="btn-clear-password" class="btn small" style="display:none" title="清除已保存的密码">清除</button>
             </div>
           </div>
@@ -155,7 +156,12 @@
             <select id="f-keyName"></select>
             <button id="btn-manage-keys" class="btn small" style="margin-top:6px">管理私钥…</button>
           </div>
-          <div class="field" id="auth-passphrase-field" style="display:none"><label>私钥口令 (Passphrase)</label><input id="f-passphrase" type="password" /></div>
+          <div class="field" id="auth-passphrase-field" style="display:none"><label>私钥口令 (Passphrase)</label>
+            <div class="pw-row">
+              <input id="f-passphrase" type="password" placeholder="私钥口令(如有)" />
+              <button class="icon-btn pw-eye" data-target="f-passphrase" type="button" title="显示口令"></button>
+            </div>
+          </div>
         </div>
 
         <div class="tab-page" id="tab-terminal">
@@ -195,11 +201,16 @@
               <option value="rlogin">Rlogin</option>
             </select>
           </div>
-          <div class="field"><label>端口</label><input id="q-port" type="number" value="22" /></div>
+          <div class="field"><label>端口</label><input id="q-port" type="number" value="22" min="1" max="65535" /></div>
         </div>
         <div class="field"><label>主机</label><input id="q-host" placeholder="192.168.1.10 或 example.com" /></div>
         <div class="field"><label>用户名</label><input id="q-username" value="root" /></div>
-        <div class="field"><label>密码</label><input id="q-password" type="password" /></div>
+        <div class="field"><label>密码</label>
+          <div class="pw-row">
+            <input id="q-password" type="password" placeholder="SSH 密码(留空则不自动连接)" />
+            <button class="icon-btn pw-eye" data-target="q-password" type="button" title="显示密码"></button>
+          </div>
+        </div>
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="App.closeModal('modal-quick')">取消</button>
@@ -223,11 +234,11 @@
         </div>
         <div class="field-row">
           <div class="field"><label>监听地址</label><input id="t-listenHost" value="127.0.0.1" /></div>
-          <div class="field"><label>监听端口</label><input id="t-listenPort" type="number" /></div>
+          <div class="field"><label>监听端口</label><input id="t-listenPort" type="number" min="1" max="65535" /></div>
         </div>
         <div class="field-row" id="t-target-row">
           <div class="field"><label>目标地址</label><input id="t-targetHost" value="127.0.0.1" /></div>
-          <div class="field"><label>目标端口</label><input id="t-targetPort" type="number" /></div>
+          <div class="field"><label>目标端口</label><input id="t-targetPort" type="number" min="1" max="65535" /></div>
         </div>
         <div id="tunnel-list"></div>
       </div>
@@ -328,7 +339,10 @@
       <div class="modal-head"><span id="prompt-title">输入</span><button class="icon-btn" onclick="App._promptResolve(null)">✕</button></div>
       <div class="modal-body">
         <p class="hint" id="prompt-label" style="font-size:14px"></p>
-        <input id="prompt-input" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px" />
+        <div class="pw-row">
+          <input id="prompt-input" style="flex:1;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:6px;font-size:14px" />
+          <button class="icon-btn pw-eye" id="btn-prompt-eye" data-target="prompt-input" type="button" title="显示密码" style="display:none"></button>
+        </div>
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="App._promptResolve(null)">取消</button>

@@ -1,19 +1,20 @@
 /* XBTerminal 样式 */
 /* 主题 1:深蓝(默认) */
 :root {
-  --bg: #0b1622;
-  --bg-panel: #101f2e;
-  --bg-elevated: #16293a;
-  --bg-input: #0d1a26;
-  --border: #24405a;
-  --text: #d6e4f0;
-  --text-dim: #7d97ad;
-  --accent: #3b9eff;
-  --accent-hover: #62b0ff;
+  --bg: #151a2e;
+  --bg-panel: #1e2440;
+  --bg-elevated: #2a3155;
+  --bg-input: #171c33;
+  --border: #3a4270;
+  --text: #e8eaf4;
+  --text-dim: #9aa2c4;
+  --accent: #f5a623;
+  --accent-hover: #ffb84d;
+  --accent-text: #1b1503;
   --danger: #f0554b;
   --ok: #41c464;
   --warn: #e2a33c;
-  --sel: rgba(59, 158, 255, 0.28);
+  --sel: rgba(245, 166, 35, 0.22);
 }
 
 /* 主题 2:纯黑 */
@@ -52,16 +53,17 @@ body.theme-light {
 
 /* 主题 4:跟随系统(默认按深蓝,系统浅色时切换为白色) */
 body.theme-system {
-  --bg: #0b1622;
-  --bg-panel: #101f2e;
-  --bg-elevated: #16293a;
-  --bg-input: #0d1a26;
-  --border: #24405a;
-  --text: #d6e4f0;
-  --text-dim: #7d97ad;
-  --accent: #3b9eff;
-  --accent-hover: #62b0ff;
-  --sel: rgba(59, 158, 255, 0.28);
+  --bg: #151a2e;
+  --bg-panel: #1e2440;
+  --bg-elevated: #2a3155;
+  --bg-input: #171c33;
+  --border: #3a4270;
+  --text: #e8eaf4;
+  --text-dim: #9aa2c4;
+  --accent: #f5a623;
+  --accent-hover: #ffb84d;
+  --accent-text: #1b1503;
+  --sel: rgba(245, 166, 35, 0.22);
 }
 @media (prefers-color-scheme: light) {
   body.theme-system {
@@ -121,7 +123,7 @@ body {
   padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 13px; transition: all .15s;
 }
 .btn:hover { border-color: var(--accent); background: var(--bg-input); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text, #1b1503); }
 .btn.primary:hover { background: var(--accent-hover); }
 .btn.small { padding: 3px 8px; font-size: 12px; }
 .btn.active { border-color: var(--accent); color: var(--accent); background: var(--bg-input); }
@@ -303,7 +305,7 @@ body {
 }
 .modal.hidden { display: none; }
 .modal-box {
-  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
   width: 480px; max-width: 92vw; max-height: 86vh; display: flex; flex-direction: column;
   box-shadow: 0 12px 40px rgba(0,0,0,.4);
 }
@@ -334,11 +336,33 @@ body {
 .field select option, .field select optgroup {
   background: var(--bg-panel); color: var(--text);
 }
+/* number 输入框隐藏原生上下箭头(端口/字号等),与文本输入框风格统一 */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }
 .field-row { display: flex; gap: 10px; }
 .field-row .field { flex: 1; }
 .pw-row { display: flex; gap: 6px; align-items: center; }
 .pw-row input { flex: 1; }
 .pw-row .btn.small { flex: 0 0 auto; white-space: nowrap; }
+
+/* 禁用浏览器原生密码"显示/隐藏"眼睛图标(Edge/IE 的 ::-ms-reveal),
+   避免与自定义 .pw-eye 按钮重复出现两个眼睛 */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear { display: none; }
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-contacts-auto-fill-button { display: none !important; visibility: hidden; pointer-events: none; }
+.pw-eye {
+  flex: 0 0 auto; width: 30px; height: 30px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-dim); border-radius: 5px;
+}
+.pw-eye:hover { color: var(--accent); background: var(--bg-elevated); }
+.pw-eye .eye-slash { display: none; }
+.pw-eye.showing .eye-slash { display: block; }
+.pw-eye.showing { color: var(--accent); }
 .field.checkbox label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; }
 .field.checkbox input { width: auto; }
 .hint { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
@@ -352,6 +376,13 @@ body {
 .tabs .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 .tab-page { display: none; }
 .tab-page.active { display: block; }
+/* 会话编辑弹窗:各 tab 高度差异大(连接页约 380px、认证页约 170px),
+   用 grid 让 tabs 占第一行、所有 tab 页重叠在第二行,弹窗高度始终等于最高的 tab,
+   切换 tab(点击认证/密码栏)时窗口高度不再骤变 */
+#modal-session .modal-body { display: grid; grid-template-rows: auto auto; }
+#modal-session .modal-body > .tabs { grid-row: 1; grid-column: 1; }
+#modal-session .tab-page { grid-row: 2; grid-column: 1; display: block; visibility: hidden; }
+#modal-session .tab-page.active { visibility: visible; }
 
 /* SFTP 面板 */
 .sftp-wrap { position: absolute; inset: 0; display: none; flex-direction: column; background: var(--bg-panel); }

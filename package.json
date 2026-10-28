@@ -1,6 +1,6 @@
 {
   "name": "xbterminal",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A remote terminal (SSH/Telnet/Rlogin/SFTP/port-forwarding) built with Node.js + xterm.js",
   "main": "electron/main.js",
   "type": "commonjs",
@@ -43,8 +43,18 @@
     },
     "win": {
       "target": [
-        { "target": "portable", "arch": ["x64"] },
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },

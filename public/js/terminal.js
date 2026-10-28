@@ -38,10 +38,10 @@ class TerminalSession {
     }
     // 深蓝(默认)
     return {
-      background: '#0b1622', foreground: '#d6e4f0', cursor: '#3b9eff',
-      selectionBackground: 'rgba(59,158,255,0.32)',
-      black: '#0b1622', red: '#ff6b6b', green: '#4ad184', yellow: '#e6c07b',
-      blue: '#5ca8ff', magenta: '#c792ea', cyan: '#4fd6e0', white: '#cfe3f5',
+      background: '#151a2e', foreground: '#e8eaf4', cursor: '#f5a623',
+      selectionBackground: 'rgba(245,166,35,0.25)',
+      black: '#151a2e', red: '#ff6b6b', green: '#4ad184', yellow: '#e6c07b',
+      blue: '#5ca8ff', magenta: '#c792ea', cyan: '#4fd6e0', white: '#e8eaf4',
       brightBlack: '#4a6b85', brightRed: '#ff8f8f', brightGreen: '#6fdf9c',
       brightYellow: '#f0d29a', brightBlue: '#82bdff', brightMagenta: '#ddb3f4',
       brightCyan: '#7ce4ec', brightWhite: '#ffffff'

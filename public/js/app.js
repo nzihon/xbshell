@@ -302,6 +302,12 @@ const App = {
       const inp = document.getElementById('prompt-input');
       inp.type = password ? 'password' : 'text';
       inp.value = defaultValue;
+      const eye = document.getElementById('btn-prompt-eye');
+      if (eye) {
+        eye.style.display = password ? '' : 'none';
+        eye.classList.remove('showing');
+        eye.title = '显示密码';
+      }
       this._promptResolveFn = resolve;
       this.showModal('modal-prompt');
       setTimeout(() => inp.focus(), 60);
@@ -603,6 +609,21 @@ const App = {
     // 快速连接无持久化名称,标题直接由 username@host 生成(避免「root@host (root@host)」重复)
     const s = { host, port, protocol, username, authType: 'password', quickCommands: [] };
     this.openTerminalForSession(null, s, { host, port, protocol, username, password });
+  },
+
+  // 快速连接弹窗:回车智能连接 —— 缺必填项则聚焦对应框;SSH 未填密码则聚焦密码框,否则直接连接
+  _quickConnectEnter() {
+    const protocol = document.getElementById('q-protocol').value;
+    const host = document.getElementById('q-host').value.trim();
+    const username = document.getElementById('q-username').value.trim();
+    const password = document.getElementById('q-password').value;
+    if (!host) { this._toast('请输入主机'); document.getElementById('q-host').focus(); return; }
+    if (protocol === 'ssh' && !username) { this._toast('SSH 连接需要用户名'); document.getElementById('q-username').focus(); return; }
+    if (protocol === 'ssh' && !password) {
+      document.getElementById('q-password').focus();
+      return;
+    }
+    this.doQuickConnect();
   },
 
   // ---------- SFTP ----------
@@ -1067,6 +1088,31 @@ const App = {
       const cur = parseInt(document.getElementById('q-port').value, 10) || 0;
       if (!cur || [22, 23, 513].includes(cur)) document.getElementById('q-port').value = defaults[p];
     };
+
+    // 密码显示/隐藏切换(眼睛按钮)
+    const EYE_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle><line class="eye-slash" x1="3" y1="3" x2="21" y2="21"></line></svg>';
+    document.querySelectorAll('.pw-eye').forEach(b => {
+      b.innerHTML = EYE_SVG;
+      b.onclick = () => {
+        const inp = document.getElementById(b.dataset.target);
+        if (!inp) return;
+        const show = inp.type === 'password';
+        inp.type = show ? 'text' : 'password';
+        b.classList.toggle('showing', show);
+        b.title = show ? '隐藏密码' : '显示密码';
+        if (show) inp.focus();
+      };
+    });
+
+    // 快速连接弹窗:回车键触发智能连接
+    ['q-protocol', 'q-port', 'q-host', 'q-username', 'q-password'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        this._quickConnectEnter();
+      });
+    });
     document.getElementById('btn-add-folder').onclick = async () => {
       // 「新建分组」:输入分组名后,在该分组下新建会话(分组在保存会话时随 group 字段落库)
       const name = await this._prompt('分组名称:', { title: '新建分组', defaultValue: '' });
@@ -1088,7 +1134,9 @@ const App = {
 
     // 弹窗关闭
     document.querySelectorAll('.modal-close').forEach(b => b.onclick = () => this.closeModal(b.closest('.modal').id));
-    document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', (e) => {
+    // 点击遮罩关闭弹窗:用 mousedown 而非 click 判断,避免在弹窗内部按下鼠标
+    // 再拖到遮罩上松手(click 的 target 会落在遮罩)被误判为点击遮罩而关闭
+    document.querySelectorAll('.modal').forEach(m => m.addEventListener('mousedown', (e) => {
       if (e.target !== m) return;
       if (m.id === 'modal-confirm') this._confirmResolve(false);
       else if (m.id === 'modal-prompt') this._promptResolve(null);
