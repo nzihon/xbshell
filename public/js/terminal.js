@@ -161,6 +161,8 @@ class TerminalSession {
 
   connect(sessionId, override) {
     return new Promise((resolve, reject) => {
+      // 重试/重连时先关闭旧 WebSocket,避免连接泄漏
+      if (this.ws) { try { this.ws.close(); } catch (e) {} }
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       const ws = new WebSocket(`${proto}://${location.host}/ws/terminal`);
       this.ws = ws;
@@ -189,7 +191,9 @@ class TerminalSession {
           this._syncSize();
         } else if (m.type === 'error') {
           this.term.write('\r\n\x1b[31m[错误] ' + m.message + '\x1b[0m\r\n');
-          reject(new Error(m.message));
+          const err = new Error(m.message);
+          err.authFailed = !!m.authFailed;
+          reject(err);
         } else if (m.type === 'close') {
           this.state = 'closed';
           this.onState('closed');

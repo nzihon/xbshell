@@ -388,7 +388,15 @@ const App = {
       if (pw === null || pw === '') return;
       override = { password: pw };
     }
-    this.openTerminalForSession(id, s, override);
+    const result = await this.openTerminalForSession(id, s, override);
+    // 连接成功后,若本次输入了密码(弹窗/认证失败重试),自动保存到会话,下次双击无需再输
+    if (result && result.ok && result.password) {
+      try {
+        await API.sessions.update(id, { password: result.password });
+        await this.refreshSessions();
+        this._toast('密码已保存,下次连接无需再输入');
+      } catch (e) { /* 保存失败不影响连接 */ }
+    }
   },
 
   async openTerminalForSession(id, s, override) {
@@ -418,19 +426,35 @@ const App = {
       onState: (st) => { tab.status = st; this.updateStatus(tab); this.renderTabs(); }
     });
     tab.terminal = term;
-    try {
-      await term.connect(id, override);
-      tab.status = 'ready';
-      this.updateStatus(tab);
-      this.updateBroadcastTargets();
-      this.renderTabs();
-      this.renderQuickBar();
-      this.applyLayout();
-      this.refreshMonitorIfOpen();
-      term.focus();
-    } catch (e) {
-      tab.status = 'closed';
-      this.updateStatus(tab);
+    // 连接循环:认证失败(密码/私钥错误)时弹窗让用户重新输入密码后自动重试
+    let curOverride = override;
+    while (true) {
+      try {
+        await term.connect(id, curOverride);
+        tab.status = 'ready';
+        this.updateStatus(tab);
+        this.updateBroadcastTargets();
+        this.renderTabs();
+        this.renderQuickBar();
+        this.applyLayout();
+        this.refreshMonitorIfOpen();
+        term.focus();
+        return { ok: true, password: curOverride ? curOverride.password : null };
+      } catch (e) {
+        if (e && e.authFailed && (s.protocol || 'ssh') === 'ssh') {
+          const host = s.host || (curOverride && curOverride.host) || '';
+          const user = s.username || (curOverride && curOverride.username) || '';
+          const pw = await this._prompt(`认证失败,请重新输入 ${user}@${host} 的密码:`, { password: true, title: '认证失败' });
+          if (pw === null || pw === '') { tab.status = 'closed'; this.updateStatus(tab); return { ok: false }; }
+          curOverride = Object.assign({}, curOverride || {}, { password: pw });
+          tab.status = 'connecting';
+          this.updateStatus(tab);
+          continue;
+        }
+        tab.status = 'closed';
+        this.updateStatus(tab);
+        return { ok: false };
+      }
     }
   },
 
@@ -573,11 +597,14 @@ const App = {
       logSession: document.getElementById('f-logSession').checked,
       quickCommands: document.getElementById('f-quickCommands').value.split('\n').map(x => x.trim()).filter(Boolean)
     };
-    // 密码/口令处理:编辑时留空=保持原值不变,避免误清空;点「清除」才显式清空密码
+    // 密码处理:输入了新密码 → 覆盖保存(即使之前点过「清除」);
+    // 留空且点过「清除」 → 清空;留空且未清除 → 保持原密码不变
     if (this.editingSessionId) {
-      if (this._clearPassword) {
+      if (body.password) {
+        // 有新密码,直接覆盖
+      } else if (this._clearPassword) {
         body.password = ''; // 显式清除已保存密码
-      } else if (!body.password) {
+      } else {
         delete body.password; // 留空保持原密码不变
       }
       // 私钥口令同理:留空保持原值,填新值才更新
@@ -1079,8 +1106,18 @@ const App = {
     document.getElementById('f-protocol').onchange = () => this.toggleProtocolFields();
     document.getElementById('btn-clear-password').onclick = () => {
       this._clearPassword = true;
-      document.getElementById('f-password').value = '';
-      document.getElementById('f-password').placeholder = '保存后将清除已保存密码';
+      const inp = document.getElementById('f-password');
+      inp.value = '';
+      inp.placeholder = '已标记清除(保存后每次连接时输入)';
+      inp.focus();
+      this._toast('已标记清除密码,保存后生效');
+    };
+    // 输入新密码时自动取消「清除」标记,恢复为「覆盖原密码」语义
+    document.getElementById('f-password').oninput = () => {
+      if (this._clearPassword) {
+        this._clearPassword = false;
+        document.getElementById('f-password').placeholder = '输入新密码(将覆盖原密码)';
+      }
     };
     document.getElementById('q-protocol').onchange = () => {
       const defaults = { ssh: 22, telnet: 23, rlogin: 513 };

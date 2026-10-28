@@ -226,11 +226,11 @@ wssTerminal.on('connection', (ws) => {
         conn = manager.create(connId, cfg);
         conn.onData = (d) => ws.send(JSON.stringify({ type: 'data', data: d.toString('utf8') }));
         conn.onClose = (reason) => ws.send(JSON.stringify({ type: 'close', reason }));
-        conn.onError = (m) => ws.send(JSON.stringify({ type: 'error', message: m }));
+        conn.onError = (m, authFailed) => ws.send(JSON.stringify({ type: 'error', message: m, authFailed: !!authFailed }));
         await conn.connect();
         ws.send(JSON.stringify({ type: 'ready', connId }));
       } catch (e) {
-        ws.send(JSON.stringify({ type: 'error', message: e.message || String(e) }));
+        ws.send(JSON.stringify({ type: 'error', message: e.message || String(e), authFailed: !!e.authFailed }));
         ws.send(JSON.stringify({ type: 'close', reason: 'connect-failed' }));
       }
     } else if (msg.type === 'input' && conn) {
@@ -255,7 +255,7 @@ wssSftp.on('connection', (ws) => {
   let cwd = '/';
   const uploads = new Map(); // uploadId -> { name, total, parts[] } 分块上传累积缓冲
 
-  const fail = (m) => ws.send(JSON.stringify({ type: 'error', message: m }));
+  const fail = (m, authFailed) => ws.send(JSON.stringify({ type: 'error', message: m, authFailed: !!authFailed }));
 
   const openSftp = async () => {
     if (sftp) return sftp;

@@ -146,7 +146,7 @@
           </div>
           <div class="field" id="auth-password-field"><label>密码</label>
             <div class="pw-row">
-              <input id="f-password" type="password" placeholder="留空表示每次连接时输入" />
+              <input id="f-password" type="password" autocomplete="new-password" placeholder="留空表示每次连接时输入" />
               <button class="icon-btn pw-eye" data-target="f-password" type="button" title="显示密码"></button>
               <button id="btn-clear-password" class="btn small" style="display:none" title="清除已保存的密码">清除</button>
             </div>
@@ -158,7 +158,7 @@
           </div>
           <div class="field" id="auth-passphrase-field" style="display:none"><label>私钥口令 (Passphrase)</label>
             <div class="pw-row">
-              <input id="f-passphrase" type="password" placeholder="私钥口令(如有)" />
+              <input id="f-passphrase" type="password" autocomplete="new-password" placeholder="私钥口令(如有)" />
               <button class="icon-btn pw-eye" data-target="f-passphrase" type="button" title="显示口令"></button>
             </div>
           </div>
@@ -207,7 +207,7 @@
         <div class="field"><label>用户名</label><input id="q-username" value="root" /></div>
         <div class="field"><label>密码</label>
           <div class="pw-row">
-            <input id="q-password" type="password" placeholder="SSH 密码(留空则不自动连接)" />
+            <input id="q-password" type="password" autocomplete="new-password" placeholder="SSH 密码(留空则不自动连接)" />
             <button class="icon-btn pw-eye" data-target="q-password" type="button" title="显示密码"></button>
           </div>
         </div>
